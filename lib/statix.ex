@@ -354,6 +354,9 @@ defmodule Statix do
     end
   end
 
+  @spec child_spec(Keyword.t()) :: Supervisor.child_spec()
+  def child_spec(opts), do: Statix.Supervisor.child_spec(opts)
+
   defstruct [:conn, :tags, :pool]
 
   @doc false
