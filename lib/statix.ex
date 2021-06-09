@@ -361,9 +361,10 @@ defmodule Statix do
     config = get_config(module, options)
     conn = Conn.new(config.host, config.port)
     header = IO.iodata_to_binary([conn.header | config.prefix])
+    managed = Keyword.get(options, :managed, false)
 
     %__MODULE__{
-      conn: %{conn | header: header},
+      conn: %{conn | header: header, managed: managed},
       pool: build_pool(module, config.pool_size),
       tags: config.tags
     }

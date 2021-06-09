@@ -1,7 +1,17 @@
 defmodule Statix.Conn do
   @moduledoc false
 
-  defstruct [:sock, :header]
+  defmodule PortClosedError do
+    @moduledoc "Raised when a port closure is detected."
+
+    @message "Port closure detected."
+    defexception [:message]
+
+    @impl true
+    def exception(_), do: %__MODULE__{message: @message}
+  end
+
+  defstruct [:sock, :header, managed: false]
 
   alias Statix.Packet
 
@@ -30,12 +40,12 @@ defmodule Statix.Conn do
     %__MODULE__{conn | sock: sock}
   end
 
-  def transmit(%__MODULE__{header: header, sock: sock}, type, key, val, options)
+  def transmit(%__MODULE__{header: header, sock: sock} = conn, type, key, val, options)
       when is_binary(val) and is_list(options) do
     result =
       header
       |> Packet.build(type, key, val, options)
-      |> transmit(sock)
+      |> transmit(conn)
 
     if result == {:error, :port_closed} do
       Logger.error(fn ->
@@ -47,12 +57,17 @@ defmodule Statix.Conn do
     result
   end
 
-  defp transmit(packet, sock) do
+  defp transmit(packet, %__MODULE__{sock: sock, managed: managed}) do
     try do
       Port.command(sock, packet)
     rescue
       ArgumentError ->
-        {:error, :port_closed}
+        # managed connections are expected to trap and handle exits
+        if managed do
+          raise PortClosedError
+        else
+          {:error, :port_closed}
+        end
     else
       true ->
         receive do
