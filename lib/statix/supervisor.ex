@@ -41,7 +41,7 @@ defmodule Statix.Supervisor do
     max_reconnect_attempts =
       Keyword.get(opts, :max_reconnect_attempts, @default_max_reconnect_attempts)
 
-    # open a connection to the server
+    # open a managed connection to the server
     :ok = statix_mod.connect(managed: true)
 
     {:ok, %State{mod: statix_mod, max_reconnect_attempts: max_reconnect_attempts}}
@@ -49,11 +49,14 @@ defmodule Statix.Supervisor do
 
   @impl GenServer
   def handle_info({:EXIT, _port, %Statix.Conn.PortClosedError{} = _reason}, state) do
+    # cancel previous timeout, if any
+    if state.reconnect_timeout, do: :timer.cancel(state.reconnect_timeout)
+
     if state.reconnect_attempts >= state.max_reconnect_attempts do
       {:exit, {:shutdown, "too many reconnect attempts"},
        %{state | reconnect_attempts: state.reconnect_attempts + 1}}
     else
-      # open a new connection
+      # open a new managed connection
       :ok = state.mod.connect(managed: true)
 
       # reset reconnect attempts after timeout
