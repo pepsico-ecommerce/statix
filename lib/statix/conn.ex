@@ -11,7 +11,7 @@ defmodule Statix.Conn do
     def exception(_), do: %__MODULE__{message: @message}
   end
 
-  defstruct [:sock, :header, managed: false]
+  defstruct [:sock, :header, :name]
 
   alias Statix.Packet
 
@@ -35,9 +35,9 @@ defmodule Statix.Conn do
     end
   end
 
-  def open(%__MODULE__{} = conn) do
+  def open(%__MODULE__{name: name}) do
     {:ok, sock} = :gen_udp.open(0, active: false)
-    %__MODULE__{conn | sock: sock}
+    Process.register(sock, name)
   end
 
   def transmit(%__MODULE__{header: header, sock: sock} = conn, type, key, val, options)
@@ -52,22 +52,23 @@ defmodule Statix.Conn do
         if(is_atom(sock), do: "", else: "Statix ") <>
           "#{inspect(sock)} #{type} metric \"#{key}\" lost value #{val}" <> " due to port closure"
       end)
+
+      # open a new port for subsequent tranmissions
+      # NOTE: this port will be linked to the process that
+      # called `transmit`, so perhaps this should be handled
+      # by sending a message to a GenServer instead?
+      open(conn)
     end
 
     result
   end
 
-  defp transmit(packet, %__MODULE__{sock: sock, managed: managed}) do
+  defp transmit(packet, %__MODULE__{sock: sock}) do
     try do
       Port.command(sock, packet)
     rescue
       ArgumentError ->
-        # managed connections are expected to trap and handle exits
-        if managed do
-          raise PortClosedError
-        else
-          {:error, :port_closed}
-        end
+        {:error, :port_closed}
     else
       true ->
         receive do

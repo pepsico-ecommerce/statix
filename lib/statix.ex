@@ -364,10 +364,9 @@ defmodule Statix do
     config = get_config(module, options)
     conn = Conn.new(config.host, config.port)
     header = IO.iodata_to_binary([conn.header | config.prefix])
-    managed = Keyword.get(options, :managed, false)
 
     %__MODULE__{
-      conn: %{conn | header: header, managed: managed},
+      conn: %{conn | header: header},
       pool: build_pool(module, config.pool_size),
       tags: config.tags
     }
@@ -382,8 +381,7 @@ defmodule Statix do
   @doc false
   def open(%__MODULE__{conn: conn, pool: pool}) do
     Enum.each(pool, fn name ->
-      %{sock: sock} = Conn.open(conn)
-      Process.register(sock, name)
+      Conn.open(%{conn | name: name})
     end)
   end
 
