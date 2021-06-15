@@ -1,5 +1,5 @@
 defmodule Statix.PoolingTest do
-  use Statix.TestCase
+  use Statix.TestCase, async: false
 
   use Statix, runtime_config: true
 

@@ -10,7 +10,11 @@ defmodule Statix.TestCase do
 
     quote do
       setup_all do
-        {:ok, _} = Statix.TestServer.start_link(unquote(port), __MODULE__.Server)
+        args = [unquote(port), __MODULE__.Server]
+        start = {Statix.TestServer, :start_link, args}
+        server_spec = Supervisor.child_spec(Statix.TestServer, start: start)
+        start_supervised!(server_spec)
+
         :ok
       end
 

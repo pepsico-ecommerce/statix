@@ -1,7 +1,7 @@
 defmodule Statix.OverridingTest do
   @server_port 8225
 
-  use Statix.TestCase, port: @server_port
+  use Statix.TestCase, async: false, port: @server_port
 
   Application.put_env(:statix, __MODULE__, port: @server_port)
 
